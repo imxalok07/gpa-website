@@ -1,3 +1,4 @@
+console.log("CMS FILE LOADED");
 (async () => {
     try {
         const response = await fetch(GPA_CONFIG.timelineCsvUrl);

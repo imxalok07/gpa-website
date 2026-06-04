@@ -80,55 +80,32 @@
     });
   }
 
-  function parseCsv(text) {
-    const rows = [];
-    let row = [], cell = '', quote = false;
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i], n = text[i+1];
-      if (c === '"' && quote && n === '"') { cell += '"'; i++; continue; }
-      if (c === '"') { quote = !quote; continue; }
-      if (c === ',' && !quote) { row.push(cell); cell = ''; continue; }
-      if ((c === '\n' || c === '\r') && !quote) {
-        if (c === '\r' && n === '\n') i++;
-        row.push(cell); cell = '';
-        if (row.some(v => String(v).trim() !== '')) rows.push(row);
-        row = [];
-        continue;
-      }
-      cell += c;
-    }
-    row.push(cell);
-    if (row.some(v => String(v).trim() !== '')) rows.push(row);
-    const header = rows.shift().map(h => h.trim());
-    return rows.map((r, idx) => {
-      const obj = {};
-      header.forEach((h, i) => obj[h] = (r[i] || '').trim());
-      return {
-        id: idx + 1,
-        year: Number(obj.Year),
-        date: obj['Date (Approx)'] || '',
-        place: obj.Place || '',
-        category: obj.Category || '',
-        title: obj.Event || '',
-        text: obj['Detailed Narrative Description'] || ''
-      };
-    }).filter(x => Number.isFinite(x.year) && x.title);
-  }
+async function loadEvents() {
+  try {
+    const response = await fetch('./data/timeline.json', {
+      cache: 'no-store'
+    });
 
-  async function loadEvents() {
-    const embedded = JSON.parse(document.getElementById('gpaTimelineData').textContent || '[]');
-    if (!GPA_CONFIG.timelineCsvUrl) return embedded;
-    try {
-      const response = await fetch(GPA_CONFIG.timelineCsvUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error('CSV response failed');
-      const csvText = await response.text();
-      const parsed = parseCsv(csvText);
-      return parsed.length ? parsed : embedded;
-    } catch (e) {
-      toast('Timeline sheet could not be loaded, so the built-in timeline data is being shown.');
-      return embedded;
+    if (!response.ok) {
+      throw new Error('Failed to load timeline.json');
     }
+
+    const data = await response.json();
+
+    console.log('Timeline loaded from JSON:', data);
+
+    return data;
   }
+  catch (e) {
+    console.error('Timeline JSON failed:', e);
+
+    const embedded = JSON.parse(
+      document.getElementById('gpaTimelineData').textContent || '[]'
+    );
+
+    return embedded;
+  }
+}
 
   function clean(s) { return String(s || '').toLowerCase(); }
   function periodBounds(period) {
